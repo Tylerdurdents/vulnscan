@@ -78,10 +78,10 @@ func (m *XSSModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) []
 			if err != nil {
 				continue
 			}
-			defer resp.Body.Close()
 
 			// Read response body
 			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
 			if err != nil {
 				continue
 			}
@@ -139,9 +139,9 @@ func (m *XSSModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) []
 				if err != nil {
 					continue
 				}
-				defer resp.Body.Close()
 
 				body, err := io.ReadAll(resp.Body)
+				resp.Body.Close()
 				if err != nil {
 					continue
 				}

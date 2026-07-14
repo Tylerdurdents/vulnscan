@@ -70,7 +70,6 @@ func (m *OpenRedirectModule) Scan(client *utils.HTTPClient, endpoint crawler.End
 			if err != nil {
 				continue
 			}
-			defer resp.Body.Close()
 
 			// Check for redirect
 			if resp.StatusCode >= 300 && resp.StatusCode < 400 {
@@ -89,6 +88,7 @@ func (m *OpenRedirectModule) Scan(client *utils.HTTPClient, endpoint crawler.End
 					vulns = append(vulns, vuln)
 				}
 			}
+			resp.Body.Close()
 		}
 	}
 
