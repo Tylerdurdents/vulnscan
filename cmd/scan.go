@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/eonedge/vulnscan/internal/db"
 	"github.com/eonedge/vulnscan/pkg/crawler"
 	"github.com/eonedge/vulnscan/pkg/modules"
 	"github.com/eonedge/vulnscan/pkg/reporter"
@@ -138,6 +139,25 @@ var scanCmd = &cobra.Command{
 
 		fmt.Printf("[+] Report saved to %s\n", output)
 
+		// Step 4: Save to database if specified
+		dbPath, _ := cmd.Flags().GetString("db")
+		if dbPath != "" {
+			fmt.Println("\n[*] Step 4: Saving to database...")
+			database, err := db.NewDB(dbPath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[!] Error opening database: %v\n", err)
+				os.Exit(1)
+			}
+			defer database.Close()
+
+			scanID, err := database.SaveScan(result)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[!] Error saving to database: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("[+] Saved to database (scan ID: %d)\n", scanID)
+		}
+
 		// Print summary
 		fmt.Println("\n[*] Scan Summary:")
 		fmt.Printf("    Target: %s\n", target)
@@ -171,4 +191,5 @@ func init() {
 	scanCmd.Flags().IntP("rate-limit", "r", 0, "Rate limit (requests per second, 0 = unlimited)")
 	scanCmd.Flags().StringP("payloads", "p", "", "Custom payloads file path")
 	scanCmd.Flags().StringP("resume", "", "", "Resume scan from state file")
+	scanCmd.Flags().StringP("db", "", "", "SQLite database path for storing results")
 }
