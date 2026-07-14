@@ -57,6 +57,7 @@ type ScannerConfig struct {
 	UserAgent string
 	Modules   []string
 	Auth      utils.AuthConfig
+	RateLimit int // requests per second, 0 = unlimited
 }
 
 // Scanner handles vulnerability scanning operations
@@ -86,6 +87,11 @@ func NewScanner(config ScannerConfig) *Scanner {
 	// Apply authentication if configured
 	if config.Auth.Type != "" {
 		client.SetAuthConfig(config.Auth)
+	}
+
+	// Apply rate limiting if configured
+	if config.RateLimit > 0 {
+		client.SetRateLimit(config.RateLimit, config.RateLimit*2)
 	}
 
 	return &Scanner{

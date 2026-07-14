@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,51 @@ type HTTPClient struct {
 	UserAgent string
 	Headers   map[string]string
 	Cookies   []*http.Cookie
+	Limiter   *RateLimiter
+}
+
+// RateLimiter controls the rate of requests
+type RateLimiter struct {
+	rate     int // requests per second
+	burst    int // max burst
+	tokens   int
+	lastTime time.Time
+	mu       sync.Mutex
+}
+
+// NewRateLimiter creates a new rate limiter
+func NewRateLimiter(rate, burst int) *RateLimiter {
+	return &RateLimiter{
+		rate:     rate,
+		burst:    burst,
+		tokens:   burst,
+		lastTime: time.Now(),
+	}
+}
+
+// Wait blocks until a token is available
+func (r *RateLimiter) Wait() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	elapsed := now.Sub(r.lastTime)
+	r.lastTime = now
+
+	// Add tokens based on elapsed time
+	r.tokens += int(elapsed.Seconds()) * r.rate
+	if r.tokens > r.burst {
+		r.tokens = r.burst
+	}
+
+	// If no tokens available, wait
+	if r.tokens <= 0 {
+		waitTime := time.Duration(1.0/float64(r.rate)) * time.Second
+		time.Sleep(waitTime)
+		r.tokens = 1
+	}
+
+	r.tokens--
 }
 
 // AuthConfig holds authentication configuration
@@ -105,8 +151,17 @@ func (c *HTTPClient) SetAuthConfig(config AuthConfig) {
 	}
 }
 
+// SetRateLimit sets rate limiting for requests
+func (c *HTTPClient) SetRateLimit(requestsPerSecond, burst int) {
+	c.Limiter = NewRateLimiter(requestsPerSecond, burst)
+}
+
 // Get performs a GET request
 func (c *HTTPClient) Get(targetURL string) (*http.Response, error) {
+	if c.Limiter != nil {
+		c.Limiter.Wait()
+	}
+
 	req, err := http.NewRequest("GET", targetURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -118,6 +173,10 @@ func (c *HTTPClient) Get(targetURL string) (*http.Response, error) {
 
 // Post performs a POST request with form data
 func (c *HTTPClient) Post(targetURL string, data url.Values) (*http.Response, error) {
+	if c.Limiter != nil {
+		c.Limiter.Wait()
+	}
+
 	req, err := http.NewRequest("POST", targetURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -130,6 +189,10 @@ func (c *HTTPClient) Post(targetURL string, data url.Values) (*http.Response, er
 
 // PostJSON performs a POST request with JSON body
 func (c *HTTPClient) PostJSON(targetURL string, body string) (*http.Response, error) {
+	if c.Limiter != nil {
+		c.Limiter.Wait()
+	}
+
 	req, err := http.NewRequest("POST", targetURL, strings.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -142,6 +205,10 @@ func (c *HTTPClient) PostJSON(targetURL string, body string) (*http.Response, er
 
 // DoRequest performs a custom HTTP request
 func (c *HTTPClient) DoRequest(method, targetURL string, body io.Reader) (*http.Response, error) {
+	if c.Limiter != nil {
+		c.Limiter.Wait()
+	}
+
 	req, err := http.NewRequest(method, targetURL, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

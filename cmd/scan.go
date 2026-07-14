@@ -29,12 +29,16 @@ var scanCmd = &cobra.Command{
 		headless, _ := cmd.Flags().GetBool("headless")
 		depth, _ := cmd.Flags().GetInt("depth")
 		format, _ := cmd.Flags().GetString("format")
+		rateLimit, _ := cmd.Flags().GetInt("rate-limit")
 
 		fmt.Printf("[*] Scanning: %s\n", target)
 		fmt.Printf("[*] Modules: %v\n", moduleNames)
 		fmt.Printf("[*] Threads: %d\n", threads)
 		fmt.Printf("[*] Output: %s\n", output)
 		fmt.Printf("[*] Format: %s\n", format)
+		if rateLimit > 0 {
+			fmt.Printf("[*] Rate limit: %d req/s\n", rateLimit)
+		}
 
 		// Parse auth config
 		authConfig := utils.AuthConfig{}
@@ -79,6 +83,7 @@ var scanCmd = &cobra.Command{
 			UserAgent: "VulnScan/1.0",
 			Modules:   moduleNames,
 			Auth:      authConfig,
+			RateLimit: rateLimit,
 		}
 
 		s := scanner.NewScanner(scanConfig)
@@ -141,4 +146,5 @@ func init() {
 	scanCmd.Flags().BoolP("headless", "H", false, "Use headless browser for JS-heavy sites")
 	scanCmd.Flags().IntP("depth", "d", 3, "Maximum crawl depth")
 	scanCmd.Flags().StringP("format", "f", "json", "Report format (json, csv, html)")
+	scanCmd.Flags().IntP("rate-limit", "r", 0, "Rate limit (requests per second, 0 = unlimited)")
 }
