@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  vulnscan:
+    build: .
+    container_name: vulnscan
+    volumes:
+      - ./reports:/app/reports
+      - ./data:/app/data
+    command: ["--help"]
+    
+  scan:
+    build: .
+    container_name: vulnscan-scan
+    volumes:
+      - ./reports:/app/reports
+      - ./data:/app/data
+    command: ["scan", "${TARGET:-https://example.com}", "-o", "/app/reports/report.json"]
+    
+  crawl:
+    build: .
+    container_name: vulnscan-crawl
+    volumes:
+      - ./reports:/app/reports
+    command: ["crawl", "${TARGET:-https://example.com}", "-o", "/app/reports/endpoints.json"]

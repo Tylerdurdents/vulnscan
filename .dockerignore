@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+vulnscan
+*.exe
+*.test
+*.out
+
+# Reports
+*.json
+*.csv
+*.html
+
+# Database
+*.db
+*.sqlite
+
+# Documentation
+*.md
+!README.md
