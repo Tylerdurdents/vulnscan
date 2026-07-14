@@ -9,6 +9,7 @@ import (
 	"github.com/eonedge/vulnscan/pkg/modules"
 	"github.com/eonedge/vulnscan/pkg/reporter"
 	"github.com/eonedge/vulnscan/pkg/scanner"
+	"github.com/eonedge/vulnscan/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +25,7 @@ var scanCmd = &cobra.Command{
 		threads, _ := cmd.Flags().GetInt("threads")
 		moduleNames, _ := cmd.Flags().GetStringSlice("modules")
 		auth, _ := cmd.Flags().GetString("auth")
+		authType, _ := cmd.Flags().GetString("auth-type")
 		headless, _ := cmd.Flags().GetBool("headless")
 		depth, _ := cmd.Flags().GetInt("depth")
 		format, _ := cmd.Flags().GetString("format")
@@ -34,8 +36,16 @@ var scanCmd = &cobra.Command{
 		fmt.Printf("[*] Output: %s\n", output)
 		fmt.Printf("[*] Format: %s\n", format)
 
+		// Parse auth config
+		authConfig := utils.AuthConfig{}
 		if auth != "" {
-			fmt.Printf("[*] Using authentication\n")
+			authConfig.Type = authType
+			authConfig.Value = auth
+			if authType == "header" {
+				authHeader, _ := cmd.Flags().GetString("auth-header")
+				authConfig.Header = authHeader
+			}
+			fmt.Printf("[*] Using authentication: %s\n", authType)
 		}
 		if headless {
 			fmt.Printf("[*] Using headless browser\n")
@@ -68,6 +78,7 @@ var scanCmd = &cobra.Command{
 			Timeout:   30 * time.Second,
 			UserAgent: "VulnScan/1.0",
 			Modules:   moduleNames,
+			Auth:      authConfig,
 		}
 
 		s := scanner.NewScanner(scanConfig)
@@ -124,7 +135,9 @@ func init() {
 	scanCmd.Flags().StringP("output", "o", "report.json", "Output file path")
 	scanCmd.Flags().IntP("threads", "t", 10, "Number of concurrent threads")
 	scanCmd.Flags().StringSliceP("modules", "m", []string{"sqli", "xss"}, "Modules to use")
-	scanCmd.Flags().StringP("auth", "a", "", "Authentication cookie or token")
+	scanCmd.Flags().StringP("auth", "a", "", "Authentication value (token, cookie, user:pass)")
+	scanCmd.Flags().StringP("auth-type", "", "cookie", "Authentication type (cookie, bearer, basic, header)")
+	scanCmd.Flags().StringP("auth-header", "", "X-Custom-Header", "Custom header name for header auth type")
 	scanCmd.Flags().BoolP("headless", "H", false, "Use headless browser for JS-heavy sites")
 	scanCmd.Flags().IntP("depth", "d", 3, "Maximum crawl depth")
 	scanCmd.Flags().StringP("format", "f", "json", "Report format (json, csv, html)")

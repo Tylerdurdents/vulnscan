@@ -56,6 +56,7 @@ type ScannerConfig struct {
 	Timeout   time.Duration
 	UserAgent string
 	Modules   []string
+	Auth      utils.AuthConfig
 }
 
 // Scanner handles vulnerability scanning operations
@@ -81,6 +82,11 @@ func NewScanner(config ScannerConfig) *Scanner {
 
 	client := utils.NewHTTPClient(config.Timeout, true)
 	client.SetUserAgent(config.UserAgent)
+
+	// Apply authentication if configured
+	if config.Auth.Type != "" {
+		client.SetAuthConfig(config.Auth)
+	}
 
 	return &Scanner{
 		config:  config,

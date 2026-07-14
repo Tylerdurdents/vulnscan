@@ -15,6 +15,14 @@ type HTTPClient struct {
 	Client    *http.Client
 	UserAgent string
 	Headers   map[string]string
+	Cookies   []*http.Cookie
+}
+
+// AuthConfig holds authentication configuration
+type AuthConfig struct {
+	Type     string // "cookie", "bearer", "basic", "header"
+	Value    string // Cookie value, token, or "user:pass" for basic
+	Header   string // Custom header name
 }
 
 // NewHTTPClient creates a new HTTP client with default settings
@@ -41,6 +49,7 @@ func NewHTTPClient(timeout time.Duration, insecureSkipVerify bool) *HTTPClient {
 		},
 		UserAgent: "VulnScan/1.0",
 		Headers:   make(map[string]string),
+		Cookies:   make([]*http.Cookie, 0),
 	}
 }
 
@@ -52,6 +61,48 @@ func (c *HTTPClient) SetUserAgent(ua string) {
 // SetHeader sets a custom header
 func (c *HTTPClient) SetHeader(key, value string) {
 	c.Headers[key] = value
+}
+
+// SetCookie adds a cookie to the client
+func (c *HTTPClient) SetCookie(name, value string) {
+	cookie := &http.Cookie{
+		Name:  name,
+		Value: value,
+	}
+	c.Cookies = append(c.Cookies, cookie)
+}
+
+// SetBearerToken sets Authorization header with Bearer token
+func (c *HTTPClient) SetBearerToken(token string) {
+	c.Headers["Authorization"] = "Bearer " + token
+}
+
+// SetBasicAuth sets Authorization header with Basic auth
+func (c *HTTPClient) SetBasicAuth(username, password string) {
+	auth := username + ":" + password
+	c.Headers["Authorization"] = "Basic " + auth
+}
+
+// SetAuthConfig applies authentication configuration
+func (c *HTTPClient) SetAuthConfig(config AuthConfig) {
+	switch config.Type {
+	case "cookie":
+		parts := strings.SplitN(config.Value, "=", 2)
+		if len(parts) == 2 {
+			c.SetCookie(parts[0], parts[1])
+		}
+	case "bearer":
+		c.SetBearerToken(config.Value)
+	case "basic":
+		parts := strings.SplitN(config.Value, ":", 2)
+		if len(parts) == 2 {
+			c.SetBasicAuth(parts[0], parts[1])
+		}
+	case "header":
+		if config.Header != "" {
+			c.Headers[config.Header] = config.Value
+		}
+	}
 }
 
 // Get performs a GET request
@@ -105,5 +156,8 @@ func (c *HTTPClient) setHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", c.UserAgent)
 	for key, value := range c.Headers {
 		req.Header.Set(key, value)
+	}
+	for _, cookie := range c.Cookies {
+		req.AddCookie(cookie)
 	}
 }
