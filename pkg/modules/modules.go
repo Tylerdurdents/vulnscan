@@ -4,6 +4,7 @@ import (
 	"github.com/eonedge/vulnscan/pkg/crawler"
 	"github.com/eonedge/vulnscan/pkg/modules/cmdi"
 	"github.com/eonedge/vulnscan/pkg/modules/csrf"
+	"github.com/eonedge/vulnscan/pkg/modules/jwt"
 	"github.com/eonedge/vulnscan/pkg/modules/lfi"
 	"github.com/eonedge/vulnscan/pkg/modules/openredirect"
 	"github.com/eonedge/vulnscan/pkg/modules/sqli"
@@ -54,6 +55,7 @@ func GetAllModules() []scanner.Module {
 		ssrf.NewSSRFModule(),
 		ssti.NewSSTIModule(),
 		xxe.NewXXEModule(),
+		jwt.NewJWTModule(),
 	}
 }
 
@@ -74,6 +76,7 @@ func GetModulesWithPayloads(payloadFile string) ([]scanner.Module, error) {
 		ssrf.NewSSRFModuleWithPayloads(payloads),
 		ssti.NewSSTIModuleWithPayloads(payloads),
 		xxe.NewXXEModuleWithPayloads(payloads),
+		jwt.NewJWTModule(),
 	}, nil
 }
 
