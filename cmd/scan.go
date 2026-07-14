@@ -8,6 +8,7 @@ import (
 	"github.com/eonedge/vulnscan/internal/db"
 	"github.com/eonedge/vulnscan/pkg/crawler"
 	"github.com/eonedge/vulnscan/pkg/modules"
+	"github.com/eonedge/vulnscan/pkg/notifications"
 	"github.com/eonedge/vulnscan/pkg/reporter"
 	"github.com/eonedge/vulnscan/pkg/scanner"
 	"github.com/eonedge/vulnscan/pkg/utils"
@@ -33,6 +34,24 @@ var scanCmd = &cobra.Command{
 		rateLimit, _ := cmd.Flags().GetInt("rate-limit")
 		payloadFile, _ := cmd.Flags().GetString("payloads")
 		resumeFile, _ := cmd.Flags().GetString("resume")
+		profile, _ := cmd.Flags().GetString("profile")
+		notifyType, _ := cmd.Flags().GetString("notify")
+		notifyWebhook, _ := cmd.Flags().GetString("notify-webhook")
+
+		// Apply profile settings
+		if profile != "" {
+			profileSettings := getProfileSettings(profile)
+			if val, ok := profileSettings["threads"].(int); ok && !cmd.Flags().Changed("threads") {
+				threads = val
+			}
+			if val, ok := profileSettings["max_depth"].(int); ok && !cmd.Flags().Changed("depth") {
+				depth = val
+			}
+			if val, ok := profileSettings["modules"].([]string); ok && !cmd.Flags().Changed("modules") {
+				moduleNames = val
+			}
+			fmt.Printf("[*] Profile: %s\n", profile)
+		}
 
 		fmt.Printf("[*] Scanning: %s\n", target)
 		fmt.Printf("[*] Modules: %v\n", moduleNames)
@@ -175,7 +194,52 @@ var scanCmd = &cobra.Command{
 				fmt.Printf("    %s: %d\n", severity, count)
 			}
 		}
+
+		// Send notification if configured
+		if notifyType != "" && notifyWebhook != "" {
+			fmt.Println("\n[*] Sending notification...")
+			notifConfig := notifications.NotificationConfig{
+				Type: notifications.NotificationType(notifyType),
+				Settings: map[string]string{
+					"webhook_url": notifyWebhook,
+				},
+			}
+			notifier := notifications.NewNotifier(notifConfig)
+			if err := notifier.SendScanResult(result); err != nil {
+				fmt.Fprintf(os.Stderr, "[!] Error sending notification: %v\n", err)
+			} else {
+				fmt.Println("[+] Notification sent")
+			}
+		}
 	},
+}
+
+func getProfileSettings(profile string) map[string]interface{} {
+	profiles := map[string]map[string]interface{}{
+		"quick": {
+			"threads":  20,
+			"max_depth": 1,
+			"max_pages": 10,
+			"modules":  []string{"sqli", "xss"},
+		},
+		"full": {
+			"threads":  10,
+			"max_depth": 3,
+			"max_pages": 100,
+			"modules":  []string{"sqli", "xss", "cmdi", "csrf", "lfi", "openredirect", "ssrf", "ssti", "xxe", "jwt", "cors", "headers"},
+		},
+		"stealth": {
+			"threads":  2,
+			"max_depth": 2,
+			"max_pages": 50,
+			"modules":  []string{"sqli", "xss", "lfi"},
+		},
+	}
+
+	if p, exists := profiles[profile]; exists {
+		return p
+	}
+	return profiles["full"]
 }
 
 func init() {
@@ -187,9 +251,12 @@ func init() {
 	scanCmd.Flags().StringP("auth-header", "", "X-Custom-Header", "Custom header name for header auth type")
 	scanCmd.Flags().BoolP("headless", "H", false, "Use headless browser for JS-heavy sites")
 	scanCmd.Flags().IntP("depth", "d", 3, "Maximum crawl depth")
-	scanCmd.Flags().StringP("format", "f", "json", "Report format (json, csv, html)")
+	scanCmd.Flags().StringP("format", "f", "json", "Report format (json, csv, html, pdf)")
 	scanCmd.Flags().IntP("rate-limit", "r", 0, "Rate limit (requests per second, 0 = unlimited)")
 	scanCmd.Flags().StringP("payloads", "p", "", "Custom payloads file path")
 	scanCmd.Flags().StringP("resume", "", "", "Resume scan from state file")
 	scanCmd.Flags().StringP("db", "", "", "SQLite database path for storing results")
+	scanCmd.Flags().StringP("profile", "", "", "Scan profile (quick, full, stealth)")
+	scanCmd.Flags().StringP("notify", "", "", "Notification type (slack, webhook)")
+	scanCmd.Flags().StringP("notify-webhook", "", "", "Webhook URL for notifications")
 }

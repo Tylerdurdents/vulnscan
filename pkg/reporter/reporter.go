@@ -10,6 +10,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/jung-kurt/gofpdf"
 	"github.com/eonedge/vulnscan/pkg/scanner"
 )
 
@@ -20,6 +21,7 @@ const (
 	FormatJSON ReportFormat = "json"
 	FormatCSV  ReportFormat = "csv"
 	FormatHTML ReportFormat = "html"
+	FormatPDF  ReportFormat = "pdf"
 )
 
 // Reporter handles report generation
@@ -45,6 +47,8 @@ func (r *Reporter) Generate(result *scanner.ScanResult) error {
 		return r.generateCSV(result)
 	case FormatHTML:
 		return r.generateHTML(result)
+	case FormatPDF:
+		return r.generatePDF(result)
 	default:
 		return fmt.Errorf("unsupported format: %s", r.format)
 	}
@@ -206,4 +210,105 @@ func (r *Reporter) generateHTML(result *scanner.ScanResult) error {
 	defer file.Close()
 
 	return tmpl.Execute(file, result)
+}
+
+// generatePDF generates a PDF report
+func (r *Reporter) generatePDF(result *scanner.ScanResult) error {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetAutoPageBreak(true, 10)
+
+	// Add title page
+	pdf.AddPage()
+	pdf.SetFont("Helvetica", "B", 24)
+	pdf.Cell(0, 20, "VulnScan Security Report")
+	pdf.Ln(30)
+
+	// Summary section
+	pdf.SetFont("Helvetica", "B", 16)
+	pdf.Cell(0, 10, "Scan Summary")
+	pdf.Ln(15)
+
+	pdf.SetFont("Helvetica", "", 12)
+	pdf.Cell(0, 8, fmt.Sprintf("Target: %s", result.Target))
+	pdf.Ln(8)
+	pdf.Cell(0, 8, fmt.Sprintf("Endpoints scanned: %d", result.Endpoints))
+	pdf.Ln(8)
+	pdf.Cell(0, 8, fmt.Sprintf("Vulnerabilities found: %d", len(result.Vulnerabilities)))
+	pdf.Ln(8)
+	pdf.Cell(0, 8, fmt.Sprintf("Duration: %v", result.Duration))
+	pdf.Ln(8)
+	pdf.Cell(0, 8, fmt.Sprintf("Date: %s", result.StartTime.Format("2006-01-02 15:04:05")))
+	pdf.Ln(20)
+
+	// Vulnerabilities section
+	if len(result.Vulnerabilities) > 0 {
+		pdf.SetFont("Helvetica", "B", 16)
+		pdf.Cell(0, 10, "Vulnerabilities")
+		pdf.Ln(15)
+
+		// Table header
+		pdf.SetFont("Helvetica", "B", 10)
+		pdf.SetFillColor(200, 200, 200)
+		pdf.Cell(30, 8, "Type")
+		pdf.Cell(20, 8, "Severity")
+		pdf.Cell(80, 8, "URL")
+		pdf.Cell(60, 8, "Description")
+		pdf.Ln(8)
+
+		// Table rows
+		pdf.SetFont("Helvetica", "", 9)
+		for _, vuln := range result.Vulnerabilities {
+			// Check if we need a new page
+			if pdf.GetY() > 270 {
+				pdf.AddPage()
+				pdf.SetFont("Helvetica", "B", 10)
+				pdf.SetFillColor(200, 200, 200)
+				pdf.Cell(30, 8, "Type")
+				pdf.Cell(20, 8, "Severity")
+				pdf.Cell(80, 8, "URL")
+				pdf.Cell(60, 8, "Description")
+				pdf.Ln(8)
+				pdf.SetFont("Helvetica", "", 9)
+			}
+
+			// Set color based on severity
+			switch vuln.Severity {
+			case scanner.SeverityCritical:
+				pdf.SetTextColor(220, 53, 69)
+			case scanner.SeverityHigh:
+				pdf.SetTextColor(253, 126, 20)
+			case scanner.SeverityMedium:
+				pdf.SetTextColor(255, 193, 7)
+			case scanner.SeverityLow:
+				pdf.SetTextColor(40, 167, 69)
+			default:
+				pdf.SetTextColor(0, 0, 0)
+			}
+
+			pdf.Cell(30, 7, truncateString(string(vuln.Type), 15))
+			pdf.Cell(20, 7, string(vuln.Severity))
+			pdf.Cell(80, 7, truncateString(vuln.URL, 40))
+			pdf.Cell(60, 7, truncateString(vuln.Description, 30))
+			pdf.Ln(7)
+		}
+
+		// Reset text color
+		pdf.SetTextColor(0, 0, 0)
+	}
+
+	// Create output directory if it doesn't exist
+	dir := filepath.Dir(r.output)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	return pdf.OutputFileAndClose(r.output)
+}
+
+// truncateString truncates a string to a maximum length
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
 }
