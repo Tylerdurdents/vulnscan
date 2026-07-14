@@ -17,6 +17,7 @@ func init() {
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(crawlCmd)
 	rootCmd.AddCommand(proxyCmd)
+	rootCmd.AddCommand(compareCmd)
 }
 
 func main() {
