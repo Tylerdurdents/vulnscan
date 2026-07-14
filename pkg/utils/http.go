@@ -18,6 +18,7 @@ type HTTPClient struct {
 	Headers   map[string]string
 	Cookies   []*http.Cookie
 	Limiter   *RateLimiter
+	Cache     *ResponseCache
 }
 
 // RateLimiter controls the rate of requests
@@ -71,15 +72,41 @@ type AuthConfig struct {
 	Header   string // Custom header name
 }
 
+// PoolConfig holds connection pool configuration
+type PoolConfig struct {
+	MaxIdleConns        int
+	MaxIdleConnsPerHost int
+	MaxConnsPerHost     int
+	IdleConnTimeout     time.Duration
+}
+
+// DefaultPoolConfig returns default pool configuration
+func DefaultPoolConfig() PoolConfig {
+	return PoolConfig{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		MaxConnsPerHost:     100,
+		IdleConnTimeout:     90 * time.Second,
+	}
+}
+
 // NewHTTPClient creates a new HTTP client with default settings
 func NewHTTPClient(timeout time.Duration, insecureSkipVerify bool) *HTTPClient {
+	return NewHTTPClientWithPool(timeout, insecureSkipVerify, DefaultPoolConfig())
+}
+
+// NewHTTPClientWithPool creates a new HTTP client with custom pool settings
+func NewHTTPClientWithPool(timeout time.Duration, insecureSkipVerify bool, pool PoolConfig) *HTTPClient {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: insecureSkipVerify,
 		},
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     90 * time.Second,
+		MaxIdleConns:        pool.MaxIdleConns,
+		MaxIdleConnsPerHost: pool.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     pool.MaxConnsPerHost,
+		IdleConnTimeout:     pool.IdleConnTimeout,
+		DisableCompression:  false,
+		DisableKeepAlives:   false,
 	}
 
 	return &HTTPClient{
@@ -156,10 +183,34 @@ func (c *HTTPClient) SetRateLimit(requestsPerSecond, burst int) {
 	c.Limiter = NewRateLimiter(requestsPerSecond, burst)
 }
 
+// EnableCache enables response caching
+func (c *HTTPClient) EnableCache(ttl time.Duration, maxSize int) {
+	c.Cache = NewResponseCache(ttl, maxSize)
+}
+
+// DisableCache disables response caching
+func (c *HTTPClient) DisableCache() {
+	c.Cache = nil
+}
+
 // Get performs a GET request
 func (c *HTTPClient) Get(targetURL string) (*http.Response, error) {
 	if c.Limiter != nil {
 		c.Limiter.Wait()
+	}
+
+	// Check cache
+	if c.Cache != nil {
+		cacheKey := GenerateCacheKey("GET", targetURL)
+		if entry, found := c.Cache.Get(cacheKey); found {
+			// Return cached response
+			resp := &http.Response{
+				StatusCode: entry.StatusCode,
+				Header:     entry.Headers,
+				Body:       io.NopCloser(strings.NewReader(string(entry.Body))),
+			}
+			return resp, nil
+		}
 	}
 
 	req, err := http.NewRequest("GET", targetURL, nil)
@@ -168,7 +219,22 @@ func (c *HTTPClient) Get(targetURL string) (*http.Response, error) {
 	}
 
 	c.setHeaders(req)
-	return c.Client.Do(req)
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache response if caching is enabled
+	if c.Cache != nil && resp.StatusCode == 200 {
+		body, err := io.ReadAll(resp.Body)
+		if err == nil {
+			resp.Body.Close()
+			c.Cache.Set(GenerateCacheKey("GET", targetURL), resp.StatusCode, resp.Header, body)
+			resp.Body = io.NopCloser(strings.NewReader(string(body)))
+		}
+	}
+
+	return resp, nil
 }
 
 // Post performs a POST request with form data
