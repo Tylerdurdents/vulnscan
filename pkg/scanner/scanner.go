@@ -52,12 +52,13 @@ type Module interface {
 
 // ScannerConfig holds configuration for the scanner
 type ScannerConfig struct {
-	Threads   int
-	Timeout   time.Duration
-	UserAgent string
-	Modules   []string
-	Auth      utils.AuthConfig
-	RateLimit int // requests per second, 0 = unlimited
+	Threads       int
+	Timeout       time.Duration
+	UserAgent     string
+	Modules       []string
+	Auth          utils.AuthConfig
+	RateLimit     int // requests per second, 0 = unlimited
+	ResumeFile    string // file to save/load scan state for resume
 }
 
 // Scanner handles vulnerability scanning operations
@@ -115,6 +116,19 @@ func (s *Scanner) Scan(endpoints []crawler.Endpoint) (*ScanResult, error) {
 		Vulnerabilities: []Vulnerability{},
 	}
 
+	// Load resume state if available
+	var resumeState *ScanState
+	completedParams := make(map[string]bool)
+	if s.config.ResumeFile != "" {
+		state, err := LoadScanState(s.config.ResumeFile)
+		if err == nil {
+			s.logger.Info("Resuming scan from %s", s.config.ResumeFile)
+			resumeState = state
+			completedParams = state.CompletedParams
+			result.Vulnerabilities = append(result.Vulnerabilities, state.Vulnerabilities...)
+		}
+	}
+
 	s.logger.Info("Starting scan on %d endpoints with %d modules", len(endpoints), len(s.modules))
 
 	// Filter modules based on config
@@ -136,8 +150,13 @@ func (s *Scanner) Scan(endpoints []crawler.Endpoint) (*ScanResult, error) {
 		go s.worker(&wg, workChan, resultChan, activeModules)
 	}
 
-	// Send work
+	// Send work (skip completed endpoints if resuming)
 	for _, endpoint := range endpoints {
+		key := endpoint.URL + ":" + endpoint.Method
+		if resumeState != nil && completedParams[key] {
+			s.logger.Debug("Skipping completed endpoint: %s", endpoint.URL)
+			continue
+		}
 		workChan <- endpoint
 	}
 	close(workChan)

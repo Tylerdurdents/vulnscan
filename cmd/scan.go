@@ -31,6 +31,7 @@ var scanCmd = &cobra.Command{
 		format, _ := cmd.Flags().GetString("format")
 		rateLimit, _ := cmd.Flags().GetInt("rate-limit")
 		payloadFile, _ := cmd.Flags().GetString("payloads")
+		resumeFile, _ := cmd.Flags().GetString("resume")
 
 		fmt.Printf("[*] Scanning: %s\n", target)
 		fmt.Printf("[*] Modules: %v\n", moduleNames)
@@ -42,6 +43,9 @@ var scanCmd = &cobra.Command{
 		}
 		if payloadFile != "" {
 			fmt.Printf("[*] Custom payloads: %s\n", payloadFile)
+		}
+		if resumeFile != "" {
+			fmt.Printf("[*] Resume file: %s\n", resumeFile)
 		}
 
 		// Parse auth config
@@ -82,12 +86,13 @@ var scanCmd = &cobra.Command{
 		// Step 2: Scan for vulnerabilities
 		fmt.Println("\n[*] Step 2: Scanning for vulnerabilities...")
 		scanConfig := scanner.ScannerConfig{
-			Threads:   threads,
-			Timeout:   30 * time.Second,
-			UserAgent: "VulnScan/1.0",
-			Modules:   moduleNames,
-			Auth:      authConfig,
-			RateLimit: rateLimit,
+			Threads:    threads,
+			Timeout:    30 * time.Second,
+			UserAgent:  "VulnScan/1.0",
+			Modules:    moduleNames,
+			Auth:       authConfig,
+			RateLimit:  rateLimit,
+			ResumeFile: resumeFile,
 		}
 
 		s := scanner.NewScanner(scanConfig)
@@ -165,4 +170,5 @@ func init() {
 	scanCmd.Flags().StringP("format", "f", "json", "Report format (json, csv, html)")
 	scanCmd.Flags().IntP("rate-limit", "r", 0, "Rate limit (requests per second, 0 = unlimited)")
 	scanCmd.Flags().StringP("payloads", "p", "", "Custom payloads file path")
+	scanCmd.Flags().StringP("resume", "", "", "Resume scan from state file")
 }
