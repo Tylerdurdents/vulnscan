@@ -5,6 +5,7 @@ import (
 	"github.com/eonedge/vulnscan/pkg/modules/cmdi"
 	"github.com/eonedge/vulnscan/pkg/modules/cors"
 	"github.com/eonedge/vulnscan/pkg/modules/csrf"
+	"github.com/eonedge/vulnscan/pkg/modules/headers"
 	"github.com/eonedge/vulnscan/pkg/modules/jwt"
 	"github.com/eonedge/vulnscan/pkg/modules/lfi"
 	"github.com/eonedge/vulnscan/pkg/modules/openredirect"
@@ -58,6 +59,7 @@ func GetAllModules() []scanner.Module {
 		xxe.NewXXEModule(),
 		jwt.NewJWTModule(),
 		cors.NewCORSModule(),
+		headers.NewHeadersModule(),
 	}
 }
 
@@ -80,6 +82,7 @@ func GetModulesWithPayloads(payloadFile string) ([]scanner.Module, error) {
 		xxe.NewXXEModuleWithPayloads(payloads),
 		jwt.NewJWTModule(),
 		cors.NewCORSModule(),
+		headers.NewHeadersModule(),
 	}, nil
 }
 
