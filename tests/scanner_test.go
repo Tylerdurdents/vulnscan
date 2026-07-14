@@ -28,7 +28,7 @@ func TestGetAllModules(t *testing.T) {
 		t.Fatal("No modules returned")
 	}
 
-	expectedModules := []string{"sqli", "xss", "cmdi", "csrf", "lfi", "openredirect", "ssrf", "ssti"}
+	expectedModules := []string{"sqli", "xss", "cmdi", "csrf", "lfi", "openredirect", "ssrf", "ssti", "xxe"}
 	if len(allModules) != len(expectedModules) {
 		t.Errorf("Expected %d modules, got %d", len(expectedModules), len(allModules))
 	}

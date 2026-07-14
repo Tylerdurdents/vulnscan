@@ -10,6 +10,7 @@ import (
 	"github.com/eonedge/vulnscan/pkg/modules/ssrf"
 	"github.com/eonedge/vulnscan/pkg/modules/ssti"
 	"github.com/eonedge/vulnscan/pkg/modules/xss"
+	"github.com/eonedge/vulnscan/pkg/modules/xxe"
 	"github.com/eonedge/vulnscan/pkg/scanner"
 	"github.com/eonedge/vulnscan/pkg/utils"
 )
@@ -52,6 +53,7 @@ func GetAllModules() []scanner.Module {
 		openredirect.NewOpenRedirectModule(),
 		ssrf.NewSSRFModule(),
 		ssti.NewSSTIModule(),
+		xxe.NewXXEModule(),
 	}
 }
 
@@ -71,6 +73,7 @@ func GetModulesWithPayloads(payloadFile string) ([]scanner.Module, error) {
 		openredirect.NewOpenRedirectModuleWithPayloads(payloads),
 		ssrf.NewSSRFModuleWithPayloads(payloads),
 		ssti.NewSSTIModuleWithPayloads(payloads),
+		xxe.NewXXEModuleWithPayloads(payloads),
 	}, nil
 }
 
