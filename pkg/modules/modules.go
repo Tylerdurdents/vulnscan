@@ -3,6 +3,7 @@ package modules
 import (
 	"github.com/eonedge/vulnscan/pkg/crawler"
 	"github.com/eonedge/vulnscan/pkg/modules/cmdi"
+	"github.com/eonedge/vulnscan/pkg/modules/cors"
 	"github.com/eonedge/vulnscan/pkg/modules/csrf"
 	"github.com/eonedge/vulnscan/pkg/modules/jwt"
 	"github.com/eonedge/vulnscan/pkg/modules/lfi"
@@ -56,6 +57,7 @@ func GetAllModules() []scanner.Module {
 		ssti.NewSSTIModule(),
 		xxe.NewXXEModule(),
 		jwt.NewJWTModule(),
+		cors.NewCORSModule(),
 	}
 }
 
@@ -77,6 +79,7 @@ func GetModulesWithPayloads(payloadFile string) ([]scanner.Module, error) {
 		ssti.NewSSTIModuleWithPayloads(payloads),
 		xxe.NewXXEModuleWithPayloads(payloads),
 		jwt.NewJWTModule(),
+		cors.NewCORSModule(),
 	}, nil
 }
 
