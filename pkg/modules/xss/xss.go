@@ -11,11 +11,18 @@ import (
 )
 
 // XSSModule implements Cross-Site Scripting vulnerability scanning
-type XSSModule struct{}
+type XSSModule struct {
+	CustomPayloads []utils.Payload
+}
 
 // NewXSSModule creates a new XSS module
 func NewXSSModule() *XSSModule {
 	return &XSSModule{}
+}
+
+// NewXSSModuleWithPayloads creates a new XSS module with custom payloads
+func NewXSSModuleWithPayloads(payloads []utils.Payload) *XSSModule {
+	return &XSSModule{CustomPayloads: payloads}
 }
 
 func (m *XSSModule) Name() string        { return "xss" }
@@ -62,6 +69,29 @@ func (m *XSSModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) []
 			severity: scanner.SeverityMedium,
 			desc:     "Reflected XSS via string injection",
 		},
+	}
+
+	// Add custom payloads
+	for _, cp := range m.CustomPayloads {
+		pattern := cp.Pattern
+		if pattern == "" {
+			pattern = "<script>alert\\('XSS'\\)</script>"
+		}
+		desc := cp.Description
+		if desc == "" {
+			desc = "Custom XSS payload"
+		}
+		payloads = append(payloads, struct {
+			payload  string
+			pattern  string
+			severity scanner.Severity
+			desc     string
+		}{
+			payload:  cp.Value,
+			pattern:  pattern,
+			severity: scanner.SeverityHigh,
+			desc:     desc,
+		})
 	}
 
 	// Test each parameter

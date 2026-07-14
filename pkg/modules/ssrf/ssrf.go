@@ -11,11 +11,18 @@ import (
 )
 
 // SSRFModule implements Server-Side Request Forgery vulnerability scanning
-type SSRFModule struct{}
+type SSRFModule struct {
+	CustomPayloads []utils.Payload
+}
 
 // NewSSRFModule creates a new SSRF module
 func NewSSRFModule() *SSRFModule {
 	return &SSRFModule{}
+}
+
+// NewSSRFModuleWithPayloads creates a new SSRF module with custom payloads
+func NewSSRFModuleWithPayloads(payloads []utils.Payload) *SSRFModule {
+	return &SSRFModule{CustomPayloads: payloads}
 }
 
 func (m *SSRFModule) Name() string        { return "ssrf" }
@@ -62,6 +69,29 @@ func (m *SSRFModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) [
 			severity: scanner.SeverityCritical,
 			desc:     "SSRF via dict protocol to Redis",
 		},
+	}
+
+	// Add custom payloads
+	for _, cp := range m.CustomPayloads {
+		pattern := cp.Pattern
+		if pattern == "" {
+			pattern = "(?i)(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)"
+		}
+		desc := cp.Description
+		if desc == "" {
+			desc = "Custom SSRF payload"
+		}
+		payloads = append(payloads, struct {
+			payload    string
+			pattern    string
+			severity   scanner.Severity
+			desc       string
+		}{
+			payload:  cp.Value,
+			pattern:  pattern,
+			severity: scanner.SeverityCritical,
+			desc:     desc,
+		})
 	}
 
 	// Test each parameter

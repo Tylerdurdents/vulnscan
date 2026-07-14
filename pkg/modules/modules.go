@@ -55,6 +55,25 @@ func GetAllModules() []scanner.Module {
 	}
 }
 
+// GetModulesWithPayloads returns modules with custom payloads
+func GetModulesWithPayloads(payloadFile string) ([]scanner.Module, error) {
+	payloads, err := LoadCustomPayloads(payloadFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return []scanner.Module{
+		sqli.NewSQLiModuleWithPayloads(payloads),
+		xss.NewXSSModuleWithPayloads(payloads),
+		cmdi.NewCMDIModuleWithPayloads(payloads),
+		csrf.NewCSRFModule(),
+		lfi.NewLFIModuleWithPayloads(payloads),
+		openredirect.NewOpenRedirectModuleWithPayloads(payloads),
+		ssrf.NewSSRFModuleWithPayloads(payloads),
+		ssti.NewSSTIModuleWithPayloads(payloads),
+	}, nil
+}
+
 // GetModuleByName returns a module by its name
 func GetModuleByName(name string) scanner.Module {
 	modules := GetAllModules()

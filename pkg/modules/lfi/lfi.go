@@ -9,11 +9,18 @@ import (
 )
 
 // LFIModule implements Local File Inclusion vulnerability scanning
-type LFIModule struct{}
+type LFIModule struct {
+	CustomPayloads []utils.Payload
+}
 
 // NewLFIModule creates a new LFI module
 func NewLFIModule() *LFIModule {
 	return &LFIModule{}
+}
+
+// NewLFIModuleWithPayloads creates a new LFI module with custom payloads
+func NewLFIModuleWithPayloads(payloads []utils.Payload) *LFIModule {
+	return &LFIModule{CustomPayloads: payloads}
 }
 
 func (m *LFIModule) Name() string        { return "lfi" }
@@ -60,6 +67,29 @@ func (m *LFIModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) []
 			severity: scanner.SeverityCritical,
 			desc:     "LFI via PHP filter wrapper",
 		},
+	}
+
+	// Add custom payloads
+	for _, cp := range m.CustomPayloads {
+		pattern := cp.Pattern
+		if pattern == "" {
+			pattern = "root:.*:0:0:"
+		}
+		desc := cp.Description
+		if desc == "" {
+			desc = "Custom LFI payload"
+		}
+		payloads = append(payloads, struct {
+			payload    string
+			pattern    string
+			severity   scanner.Severity
+			desc       string
+		}{
+			payload:  cp.Value,
+			pattern:  pattern,
+			severity: scanner.SeverityCritical,
+			desc:     desc,
+		})
 	}
 
 	// Test each parameter

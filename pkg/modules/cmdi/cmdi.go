@@ -11,11 +11,18 @@ import (
 )
 
 // CMDIModule implements Command Injection vulnerability scanning
-type CMDIModule struct{}
+type CMDIModule struct {
+	CustomPayloads []utils.Payload
+}
 
 // NewCMDIModule creates a new Command Injection module
 func NewCMDIModule() *CMDIModule {
 	return &CMDIModule{}
+}
+
+// NewCMDIModuleWithPayloads creates a new Command Injection module with custom payloads
+func NewCMDIModuleWithPayloads(payloads []utils.Payload) *CMDIModule {
+	return &CMDIModule{CustomPayloads: payloads}
 }
 
 func (m *CMDIModule) Name() string        { return "cmdi" }
@@ -62,6 +69,29 @@ func (m *CMDIModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) [
 			severity: scanner.SeverityCritical,
 			desc:     "Command injection via command substitution",
 		},
+	}
+
+	// Add custom payloads
+	for _, cp := range m.CustomPayloads {
+		pattern := cp.Pattern
+		if pattern == "" {
+			pattern = "(?i)(total \\d+|drwx|rwx|\\.txt|\\.conf|\\.log)"
+		}
+		desc := cp.Description
+		if desc == "" {
+			desc = "Custom command injection payload"
+		}
+		payloads = append(payloads, struct {
+			payload    string
+			pattern    string
+			severity   scanner.Severity
+			desc       string
+		}{
+			payload:  cp.Value,
+			pattern:  pattern,
+			severity: scanner.SeverityCritical,
+			desc:     desc,
+		})
 	}
 
 	// Test each parameter

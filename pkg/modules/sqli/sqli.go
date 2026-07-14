@@ -12,11 +12,18 @@ import (
 )
 
 // SQLiModule implements SQL injection vulnerability scanning
-type SQLiModule struct{}
+type SQLiModule struct {
+	CustomPayloads []utils.Payload
+}
 
 // NewSQLiModule creates a new SQL injection module
 func NewSQLiModule() *SQLiModule {
 	return &SQLiModule{}
+}
+
+// NewSQLiModuleWithPayloads creates a new SQL injection module with custom payloads
+func NewSQLiModuleWithPayloads(payloads []utils.Payload) *SQLiModule {
+	return &SQLiModule{CustomPayloads: payloads}
 }
 
 func (m *SQLiModule) Name() string        { return "sqli" }
@@ -63,6 +70,29 @@ func (m *SQLiModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) [
 			severity: scanner.SeverityCritical,
 			desc:     "Time-based blind SQL injection",
 		},
+	}
+
+	// Add custom payloads
+	for _, cp := range m.CustomPayloads {
+		pattern := cp.Pattern
+		if pattern == "" {
+			pattern = "(?i)(sql syntax|mysql|sqlite|postgresql|oracle|syntax error|unterminated|exception)"
+		}
+		desc := cp.Description
+		if desc == "" {
+			desc = "Custom SQL injection payload"
+		}
+		payloads = append(payloads, struct {
+			payload    string
+			pattern    string
+			severity   scanner.Severity
+			desc       string
+		}{
+			payload:  cp.Value,
+			pattern:  pattern,
+			severity: scanner.SeverityHigh,
+			desc:     desc,
+		})
 	}
 
 	// Test each parameter

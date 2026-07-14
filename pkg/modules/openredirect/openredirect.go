@@ -9,11 +9,18 @@ import (
 )
 
 // OpenRedirectModule implements Open Redirect vulnerability scanning
-type OpenRedirectModule struct{}
+type OpenRedirectModule struct {
+	CustomPayloads []utils.Payload
+}
 
 // NewOpenRedirectModule creates a new Open Redirect module
 func NewOpenRedirectModule() *OpenRedirectModule {
 	return &OpenRedirectModule{}
+}
+
+// NewOpenRedirectModuleWithPayloads creates a new Open Redirect module with custom payloads
+func NewOpenRedirectModuleWithPayloads(payloads []utils.Payload) *OpenRedirectModule {
+	return &OpenRedirectModule{CustomPayloads: payloads}
 }
 
 func (m *OpenRedirectModule) Name() string        { return "openredirect" }
@@ -54,6 +61,23 @@ func (m *OpenRedirectModule) Scan(client *utils.HTTPClient, endpoint crawler.End
 			severity: scanner.SeverityHigh,
 			desc:     "Open redirect via javascript protocol",
 		},
+	}
+
+	// Add custom payloads
+	for _, cp := range m.CustomPayloads {
+		desc := cp.Description
+		if desc == "" {
+			desc = "Custom open redirect payload"
+		}
+		payloads = append(payloads, struct {
+			payload    string
+			severity   scanner.Severity
+			desc       string
+		}{
+			payload:  cp.Value,
+			severity: scanner.SeverityMedium,
+			desc:     desc,
+		})
 	}
 
 	// Test each parameter

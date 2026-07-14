@@ -30,6 +30,7 @@ var scanCmd = &cobra.Command{
 		depth, _ := cmd.Flags().GetInt("depth")
 		format, _ := cmd.Flags().GetString("format")
 		rateLimit, _ := cmd.Flags().GetInt("rate-limit")
+		payloadFile, _ := cmd.Flags().GetString("payloads")
 
 		fmt.Printf("[*] Scanning: %s\n", target)
 		fmt.Printf("[*] Modules: %v\n", moduleNames)
@@ -38,6 +39,9 @@ var scanCmd = &cobra.Command{
 		fmt.Printf("[*] Format: %s\n", format)
 		if rateLimit > 0 {
 			fmt.Printf("[*] Rate limit: %d req/s\n", rateLimit)
+		}
+		if payloadFile != "" {
+			fmt.Printf("[*] Custom payloads: %s\n", payloadFile)
 		}
 
 		// Parse auth config
@@ -88,10 +92,23 @@ var scanCmd = &cobra.Command{
 
 		s := scanner.NewScanner(scanConfig)
 
-		// Register all modules
-		allModules := modules.GetAllModules()
-		for _, module := range allModules {
-			s.RegisterModule(module)
+		// Register modules
+		if payloadFile != "" {
+			// Load modules with custom payloads
+			customModules, err := modules.GetModulesWithPayloads(payloadFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[!] Error loading payloads: %v\n", err)
+				os.Exit(1)
+			}
+			for _, module := range customModules {
+				s.RegisterModule(module)
+			}
+		} else {
+			// Register all default modules
+			allModules := modules.GetAllModules()
+			for _, module := range allModules {
+				s.RegisterModule(module)
+			}
 		}
 
 		// Run scan
@@ -147,4 +164,5 @@ func init() {
 	scanCmd.Flags().IntP("depth", "d", 3, "Maximum crawl depth")
 	scanCmd.Flags().StringP("format", "f", "json", "Report format (json, csv, html)")
 	scanCmd.Flags().IntP("rate-limit", "r", 0, "Rate limit (requests per second, 0 = unlimited)")
+	scanCmd.Flags().StringP("payloads", "p", "", "Custom payloads file path")
 }

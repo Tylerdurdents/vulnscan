@@ -11,11 +11,18 @@ import (
 )
 
 // SSTIModule implements Server-Side Template Injection vulnerability scanning
-type SSTIModule struct{}
+type SSTIModule struct {
+	CustomPayloads []utils.Payload
+}
 
 // NewSSTIModule creates a new SSTI module
 func NewSSTIModule() *SSTIModule {
 	return &SSTIModule{}
+}
+
+// NewSSTIModuleWithPayloads creates a new SSTI module with custom payloads
+func NewSSTIModuleWithPayloads(payloads []utils.Payload) *SSTIModule {
+	return &SSTIModule{CustomPayloads: payloads}
 }
 
 func (m *SSTIModule) Name() string        { return "ssti" }
@@ -62,6 +69,29 @@ func (m *SSTIModule) Scan(client *utils.HTTPClient, endpoint crawler.Endpoint) [
 			severity: scanner.SeverityHigh,
 			desc:     "SSTI via Ruby template",
 		},
+	}
+
+	// Add custom payloads
+	for _, cp := range m.CustomPayloads {
+		pattern := cp.Pattern
+		if pattern == "" {
+			pattern = "49"
+		}
+		desc := cp.Description
+		if desc == "" {
+			desc = "Custom SSTI payload"
+		}
+		payloads = append(payloads, struct {
+			payload    string
+			pattern    string
+			severity   scanner.Severity
+			desc       string
+		}{
+			payload:  cp.Value,
+			pattern:  pattern,
+			severity: scanner.SeverityHigh,
+			desc:     desc,
+		})
 	}
 
 	// Test each parameter
