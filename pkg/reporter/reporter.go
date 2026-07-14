@@ -183,8 +183,8 @@ func (r *Reporter) generateHTML(result *scanner.ScanResult) error {
 </html>`
 
 	funcMap := template.FuncMap{
-		"lower": func(s string) string {
-			return strings.ToLower(string(s))
+		"lower": func(s interface{}) string {
+			return strings.ToLower(fmt.Sprintf("%v", s))
 		},
 	}
 
