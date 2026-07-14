@@ -4,14 +4,22 @@ import (
 	"github.com/eonedge/vulnscan/pkg/crawler"
 	"github.com/eonedge/vulnscan/pkg/modules/cmdi"
 	"github.com/eonedge/vulnscan/pkg/modules/cors"
+	"github.com/eonedge/vulnscan/pkg/modules/crlf"
 	"github.com/eonedge/vulnscan/pkg/modules/csrf"
+	"github.com/eonedge/vulnscan/pkg/modules/dirlisting"
+	"github.com/eonedge/vulnscan/pkg/modules/graphql"
 	"github.com/eonedge/vulnscan/pkg/modules/headers"
 	"github.com/eonedge/vulnscan/pkg/modules/jwt"
 	"github.com/eonedge/vulnscan/pkg/modules/lfi"
 	"github.com/eonedge/vulnscan/pkg/modules/openredirect"
+	"github.com/eonedge/vulnscan/pkg/modules/race"
+	"github.com/eonedge/vulnscan/pkg/modules/secrets"
+	"github.com/eonedge/vulnscan/pkg/modules/sensitive"
 	"github.com/eonedge/vulnscan/pkg/modules/sqli"
 	"github.com/eonedge/vulnscan/pkg/modules/ssrf"
 	"github.com/eonedge/vulnscan/pkg/modules/ssti"
+	"github.com/eonedge/vulnscan/pkg/modules/subdomain"
+	"github.com/eonedge/vulnscan/pkg/modules/websocket"
 	"github.com/eonedge/vulnscan/pkg/modules/xss"
 	"github.com/eonedge/vulnscan/pkg/modules/xxe"
 	"github.com/eonedge/vulnscan/pkg/scanner"
@@ -60,6 +68,14 @@ func GetAllModules() []scanner.Module {
 		jwt.NewJWTModule(),
 		cors.NewCORSModule(),
 		headers.NewHeadersModule(),
+		graphql.NewGraphQLModule(),
+		websocket.NewWebSocketModule(),
+		subdomain.NewSubdomainModule(),
+		crlf.NewCRLFModule(),
+		race.NewRaceModule(),
+		secrets.NewSecretsModule(),
+		sensitive.NewSensitiveModule(),
+		dirlisting.NewDirListingModule(),
 	}
 }
 
@@ -83,6 +99,14 @@ func GetModulesWithPayloads(payloadFile string) ([]scanner.Module, error) {
 		jwt.NewJWTModule(),
 		cors.NewCORSModule(),
 		headers.NewHeadersModule(),
+		graphql.NewGraphQLModule(),
+		websocket.NewWebSocketModule(),
+		subdomain.NewSubdomainModule(),
+		crlf.NewCRLFModule(),
+		race.NewRaceModule(),
+		secrets.NewSecretsModule(),
+		sensitive.NewSensitiveModule(),
+		dirlisting.NewDirListingModule(),
 	}, nil
 }
 
